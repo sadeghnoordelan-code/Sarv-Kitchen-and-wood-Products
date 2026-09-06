@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "assets": [
+    { "id": "atelier-kitchen", "category": "kitchen", "style": "contemporary", "colors": ["warm-walnut", "dark-walnut"], "size": "large", "budgetTier": "signature", "image": "/sarv/hero/sarv-hero-walnut.png" },
+    { "id": "oak-court-kitchen", "category": "kitchen", "style": "minimal", "colors": ["natural-oak", "white-oak"], "size": "medium", "budgetTier": "premium", "image": "/sarv/projects/kitchen-minimal-oak.png" },
+    { "id": "linen-house-kitchen", "category": "kitchen", "style": "neoclassical", "colors": ["warm-beige", "warm-walnut"], "size": "large", "budgetTier": "signature", "image": "/sarv/projects/kitchen-neoclassical-beige.png" },
+    { "id": "kiln-kitchen", "category": "kitchen", "style": "industrial", "colors": ["charcoal", "dark-walnut"], "size": "medium", "budgetTier": "premium", "image": "/sarv/projects/kitchen-industrial-charcoal.png" },
+    { "id": "garden-kitchen", "category": "kitchen", "style": "classic", "colors": ["white-oak", "natural-oak"], "size": "large", "budgetTier": "premium", "image": "/sarv/projects/kitchen-classic-white-oak.png" },
+    { "id": "ridge-wardrobe", "category": "wardrobe", "style": "contemporary", "colors": ["dark-walnut", "warm-beige"], "usage": "master-bedroom", "size": "large", "budgetTier": "signature", "image": "/sarv/projects/wardrobe-master-walnut.png" },
+    { "id": "lightwell-wardrobe", "category": "wardrobe", "style": "minimal", "colors": ["natural-oak"], "usage": "walk-in-closet", "size": "large", "budgetTier": "signature", "image": "/sarv/projects/wardrobe-walkin-oak.png" },
+    { "id": "soft-room", "category": "wardrobe", "style": "modern", "colors": ["soft-gray", "natural-oak"], "usage": "children-room", "size": "medium", "budgetTier": "essential", "image": "/sarv/projects/wardrobe-child-gray.png" },
+    { "id": "guest-alcove", "category": "wardrobe", "style": "classic", "colors": ["white-oak", "warm-beige"], "usage": "guest-bedroom", "size": "medium", "budgetTier": "essential", "image": "/sarv/projects/wardrobe-guest-white-oak.png" },
+    { "id": "threshold-storage", "category": "wardrobe", "style": "industrial", "colors": ["charcoal", "warm-walnut"], "usage": "entry-storage", "size": "compact", "budgetTier": "premium", "image": "/sarv/projects/wardrobe-entry-charcoal.png" },
+    { "id": "pivot-threshold", "category": "doors", "style": "modern", "colors": ["warm-walnut"], "size": "large", "budgetTier": "signature", "image": "/sarv/projects/door-pivot-walnut.png" },
+    { "id": "flush-line",", "category": "skirting", "style": "minimal", "colors": ["natural-oak", "warm-beige"], "size": "medium", "budgetTier": "premium", "image": "/sarv/projects/skirting-flush-oak.png" },
+    { "id": "contour-living", "category": "tv-console", "style": "modern", "colors": ["dark-walnut", "charcoal"], "size": "large", "budgetTier": "signature", "image": "/sarv/projects/tv-console-walnut.png" },
+    { "id": "stone-basin", "category": "bathroom-vanity", "style": "minimal", "colors": ["natural-oak", "warm-beige"], "size": "compact", "budgetTier": "premium", "image": "/sarv/projects/vanity-oak-microcement.png" },
+    { "id": "atelier-wide", "project": "atelier-kitchen", "image": "/sarv/details/atelier-wide.png" },
+    { "id": "atelier-detail", "project": "atelier-kitchen", "image": "/sarv/details/atelier-detail.png" },
+    { "id": "ridge-wide", "project": "ridge-wardrobe", "image": "/sarv/details/ridge-wide.png" },
+    { "id": "ridge-detail", "project": "ridge-wardrobe", "image": "/sarv/details/ridge-detail.png" },
+    { "id": "contour-wide", "project": "contour-living", "image": "/sarv/details/contour-wide.png" },
+    { "id": "contour-detail", "project": "contour-living", "image": "/sarv/details/contour-detail.png" }
+  ]
+}
