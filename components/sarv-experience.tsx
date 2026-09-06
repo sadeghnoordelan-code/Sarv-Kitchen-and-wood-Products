@@ -100,35 +100,37 @@ export function SarvExperience() {
 
   useEffect(() => {
     let frame = 0;
-    let currentTime = 0;
     let targetTime = 0;
     const video = heroVideoRef.current;
     const stage = heroStageRef.current;
     if (!video || !stage) return;
 
+    const applyFrame = () => {
+      frame = 0;
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      if (Math.abs(video.currentTime - targetTime) > 0.006) {
+        try { video.currentTime = targetTime; } catch { /* metadata is not ready */ }
+      }
+    };
     const readTarget = () => {
       const travel = Math.max(1, stage.offsetHeight - window.innerHeight);
       const progress = Math.min(1, Math.max(0, -stage.getBoundingClientRect().top / travel));
-      targetTime = progress * Math.max(0, video.duration - 0.04);
-      setScrolled(window.scrollY > 42);
+      const duration = Number.isFinite(video.duration) ? Math.max(0, video.duration - 0.04) : 0;
+      targetTime = progress * duration;
+      setScrolled(progress >= 0.995);
+      if (!frame) frame = requestAnimationFrame(applyFrame);
     };
-    const animate = () => {
-      if (Number.isFinite(video.duration)) {
-        currentTime += (targetTime - currentTime) * 0.085;
-        if (Math.abs(video.currentTime - currentTime) > 0.018) {
-          try { video.currentTime = currentTime; } catch { /* metadata is not ready */ }
-        }
-      }
-      frame = requestAnimationFrame(animate);
+    const ready = () => {
+      video.pause();
+      readTarget();
+      applyFrame();
     };
-    const ready = () => { video.pause(); readTarget(); };
     video.addEventListener('loadedmetadata', ready);
     window.addEventListener('scroll', readTarget, { passive: true });
     window.addEventListener('resize', readTarget);
     readTarget();
-    frame = requestAnimationFrame(animate);
     return () => {
-      cancelAnimationFrame(frame);
+      if (frame) cancelAnimationFrame(frame);
       video.removeEventListener('loadedmetadata', ready);
       window.removeEventListener('scroll', readTarget);
       window.removeEventListener('resize', readTarget);
@@ -282,8 +284,6 @@ export function SarvExperience() {
 
   return (
     <main className="sarv-shell">
-      <div className="intro" aria-hidden="true"><span className="intro-word">SARV</span><span className="intro-rule" /></div>
-
       <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
         <a className="wordmark" href="#top" aria-label="SARV home">SARV</a>
         <nav aria-label="Primary navigation">
@@ -303,18 +303,9 @@ export function SarvExperience() {
 
       <section ref={heroStageRef} className="hero-stage" id="top">
         <div className="hero">
-          <video ref={heroVideoRef} className="hero-image" muted playsInline preload="auto" poster="/sarv/hero/sarv-hero-walnut.png" aria-label="SARV architectural interior film">
+          <video ref={heroVideoRef} className="hero-image" muted playsInline preload="auto" disablePictureInPicture tabIndex={-1} aria-label="Scroll-controlled SARV architectural interior film">
             <source src="/sarv/hero/sarv-hero-sequence.mp4" type="video/mp4" />
           </video>
-          <div className="hero-wash" />
-          <div className="hero-index" aria-hidden="true"><span>01</span><span>06</span></div>
-          <div className="hero-content">
-            <p className="eyebrow">Custom architectural woodwork</p>
-            <h1>Spaces shaped through<br />material, precision <i>and</i> craft.</h1>
-            <div className="hero-actions"><a href="#work">Explore projects</a><a href="#contact">Start a project</a></div>
-          </div>
-          <div className="hero-caption"><span>Scroll to move through the space</span><span>Cabinetry · Joinery · Interior execution</span></div>
-          <a className="scroll-cue" href="#work" aria-label="Explore SARV projects"><span /></a>
         </div>
       </section>
 
