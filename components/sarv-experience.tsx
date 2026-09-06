@@ -117,6 +117,7 @@ export function SarvExperience() {
       const progress = Math.min(1, Math.max(0, -stage.getBoundingClientRect().top / travel));
       const duration = Number.isFinite(video.duration) ? Math.max(0, video.duration - 0.04) : 0;
       targetTime = progress * duration;
+      stage.style.setProperty('--hero-progress', progress.toFixed(4));
       setScrolled(progress >= 0.995);
       if (!frame) frame = requestAnimationFrame(applyFrame);
     };
@@ -134,6 +135,7 @@ export function SarvExperience() {
       video.removeEventListener('loadedmetadata', ready);
       window.removeEventListener('scroll', readTarget);
       window.removeEventListener('resize', readTarget);
+      stage.style.removeProperty('--hero-progress');
     };
   }, []);
 
@@ -306,6 +308,17 @@ export function SarvExperience() {
           <video ref={heroVideoRef} className="hero-image" muted playsInline preload="auto" disablePictureInPicture tabIndex={-1} aria-label="Scroll-controlled SARV architectural interior film">
             <source src="/sarv/hero/sarv-hero-sequence.mp4" type="video/mp4" />
           </video>
+          <div className="hero-copy">
+            <p className="hero-brand">SARV</p>
+            <div className="hero-statement">
+              <p>Architectural woodwork</p>
+              <h1>Made for the <i>space.</i></h1>
+            </div>
+            <div className="hero-meta">
+              <span>Custom interiors · Precision joinery</span>
+              <span>Scroll to move through the film</span>
+            </div>
+          </div>
         </div>
       </section>
 
