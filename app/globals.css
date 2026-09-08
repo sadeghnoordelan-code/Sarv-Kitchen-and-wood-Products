@@ -101,7 +101,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 1px solid 
 .mobile-menu > button { position: absolute; top: 1rem; right: 1rem; border: 0; background: none; padding: .75rem; }
 .mobile-menu a { font-family: var(--font-serif), Georgia, serif; font-size: clamp(3rem,15vw,5rem); line-height: .95; }
 
-.hero-stage { height: 300vh; --hero-progress: 0; }
+.hero-stage { height: 300svh; --hero-progress: 0; }
 .hero { position: sticky; top: 0; height: 100svh; background: #111; overflow: hidden; }
 .hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; pointer-events: none; user-select: none; }
 .hero-copy {
@@ -270,7 +270,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 1px solid 
   .site-header { height: 66px; grid-template-columns: 1fr auto; padding-inline: 1.15rem; }
   .site-header nav, .header-cta { display: none; }
   .menu-toggle { display: block; }
-  .hero-stage { height: 260vh; }
+  .hero-stage { height: 260svh; }
   .hero-copy { padding: 1.25rem; }
   .hero-statement { align-self: end; margin-bottom: 18svh; }
   .hero-statement h1 { max-width: 8ch; font-size: clamp(3.8rem,17vw,5.6rem); }

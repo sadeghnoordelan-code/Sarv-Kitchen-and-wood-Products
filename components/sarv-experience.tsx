@@ -99,42 +99,83 @@ export function SarvExperience() {
   };
 
   useEffect(() => {
-    let frame = 0;
+    const frameDuration = 1 / 24;
+    let animationFrame = 0;
+    let stageStart = 0;
+    let travel = 1;
     let targetTime = 0;
+    let ready = false;
+    let seekInFlight = false;
     const video = heroVideoRef.current;
     const stage = heroStageRef.current;
-    if (!video || !stage) return;
+    const hero = video?.parentElement;
+    if (!video || !stage || !hero) return;
 
-    const applyFrame = () => {
-      frame = 0;
-      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-      if (Math.abs(video.currentTime - targetTime) > 0.006) {
-        try { video.currentTime = targetTime; } catch { /* metadata is not ready */ }
+    const seekToLatestFrame = () => {
+      if (!ready || seekInFlight || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      if (Math.abs(video.currentTime - targetTime) < frameDuration * 0.45) return;
+      try {
+        seekInFlight = true;
+        video.currentTime = targetTime;
+      } catch {
+        seekInFlight = false;
       }
     };
-    const readTarget = () => {
-      const travel = Math.max(1, stage.offsetHeight - window.innerHeight);
-      const progress = Math.min(1, Math.max(0, -stage.getBoundingClientRect().top / travel));
-      const duration = Number.isFinite(video.duration) ? Math.max(0, video.duration - 0.04) : 0;
-      targetTime = progress * duration;
+
+    const updateGeometry = () => {
+      stageStart = window.scrollY + stage.getBoundingClientRect().top;
+      travel = Math.max(1, stage.offsetHeight - hero.clientHeight);
+    };
+
+    const updateFromScroll = () => {
+      animationFrame = 0;
+      const progress = Math.min(1, Math.max(0, (window.scrollY - stageStart) / travel));
+      const lastFrameTime = Number.isFinite(video.duration)
+        ? Math.max(0, video.duration - frameDuration)
+        : 0;
+      const requestedFrame = Math.round((progress * lastFrameTime) / frameDuration);
+      targetTime = Math.min(lastFrameTime, requestedFrame * frameDuration);
       stage.style.setProperty('--hero-progress', progress.toFixed(4));
       setScrolled(progress >= 0.995);
-      if (!frame) frame = requestAnimationFrame(applyFrame);
+      seekToLatestFrame();
     };
-    const ready = () => {
+
+    const scheduleUpdate = () => {
+      if (!animationFrame) animationFrame = requestAnimationFrame(updateFromScroll);
+    };
+
+    const handleReady = () => {
+      ready = true;
       video.pause();
-      readTarget();
-      applyFrame();
+      updateGeometry();
+      scheduleUpdate();
     };
-    video.addEventListener('loadedmetadata', ready);
-    window.addEventListener('scroll', readTarget, { passive: true });
-    window.addEventListener('resize', readTarget);
-    readTarget();
+
+    const handleSeeked = () => {
+      seekInFlight = false;
+      seekToLatestFrame();
+    };
+
+    const handleResize = () => {
+      updateGeometry();
+      scheduleUpdate();
+    };
+
+    video.pause();
+    video.addEventListener('loadeddata', handleReady);
+    video.addEventListener('seeked', handleSeeked);
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', handleResize);
+    updateGeometry();
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) handleReady();
+    else scheduleUpdate();
+
     return () => {
-      if (frame) cancelAnimationFrame(frame);
-      video.removeEventListener('loadedmetadata', ready);
-      window.removeEventListener('scroll', readTarget);
-      window.removeEventListener('resize', readTarget);
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      video.removeEventListener('loadeddata', handleReady);
+      video.removeEventListener('seeked', handleSeeked);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', handleResize);
       stage.style.removeProperty('--hero-progress');
     };
   }, []);
