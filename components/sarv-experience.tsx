@@ -1,8 +1,14 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Menu, Plus, SlidersHorizontal, X } from 'lucide-react';
+import {
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Menu, Plus, SlidersHorizontal, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +69,22 @@ const emptyFilters: Filters = {
 };
 
 const categoryMap = new Map(categories.map((category) => [category.id, category]));
+const fieldTaglines: Record<CategoryId, string> = {
+  kitchen: 'Shaped around life',
+  wardrobe: 'Quietly composed',
+  doors: 'Defining thresholds',
+  skirting: 'Lines that resolve',
+  'tv-console': 'Calibrated living',
+  'bathroom-vanity': 'Made for ritual',
+};
+const fieldObjectPositions: Record<CategoryId, string> = {
+  kitchen: '52% 50%',
+  wardrobe: '62% 50%',
+  doors: '50% 50%',
+  skirting: '32% 58%',
+  'tv-console': '50% 48%',
+  'bathroom-vanity': '43% 52%',
+};
 
 const hexToRgb = (hex: string) => {
   const clean = hex.replace('#', '');
@@ -84,19 +106,100 @@ export function SarvExperience() {
   const heroVideoRef = useRef<HTMLVideoElement>(null);
   const categoryStageRef = useRef<HTMLElement>(null);
   const categoryTrackRef = useRef<HTMLDivElement>(null);
+  const workspaceBodyRef = useRef<HTMLDivElement>(null);
+  const workspaceTabsRef = useRef<HTMLDivElement>(null);
+  const filterPanelRef = useRef<HTMLElement>(null);
+  const resultPanelRef = useRef<HTMLElement>(null);
+  const detailFromWorkspaceRef = useRef(false);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fieldIndex, setFieldIndex] = useState(0);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>('kitchen');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [customColors, setCustomColors] = useState(['#79573D', '#F4F1EB']);
-  const [detailProject, setDetailProject] = useState<ProjectVisual | null>(null);
+  const [detailProject, setDetailProject] = useState<ProjectVisual | null>(
+    null,
+  );
 
-  const openCategory = (category: CategoryId) => {
+  const resetWorkspaceScroll = () => {
+    requestAnimationFrame(() => {
+      workspaceBodyRef.current?.scrollTo({ top: 0 });
+      filterPanelRef.current?.scrollTo({ top: 0 });
+      resultPanelRef.current?.scrollTo({ top: 0 });
+    });
+  };
+
+  const selectWorkspaceCategory = (category: CategoryId) => {
     setActiveCategory(category);
     setFilters(emptyFilters);
+    resetWorkspaceScroll();
+  };
+
+  const openCategory = (category: CategoryId) => {
+    selectWorkspaceCategory(category);
     setWorkspaceOpen(true);
   };
+
+  const goToField = (index: number) => {
+    const stage = categoryStageRef.current;
+    if (!stage) return;
+    const boundedIndex = Math.min(categories.length - 1, Math.max(0, index));
+    const stageTop = window.scrollY + stage.getBoundingClientRect().top;
+    const travel = Math.max(1, stage.offsetHeight - window.innerHeight);
+    window.scrollTo({
+      top: stageTop + travel * (boundedIndex / (categories.length - 1)),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+  };
+
+  const openProject = (project: ProjectVisual, fromWorkspace = false) => {
+    detailFromWorkspaceRef.current = fromWorkspace;
+    if (fromWorkspace) setWorkspaceOpen(false);
+    setDetailProject(project);
+  };
+
+  const closeProject = () => {
+    const returnToWorkspace = detailFromWorkspaceRef.current;
+    detailFromWorkspaceRef.current = false;
+    setDetailProject(null);
+    if (returnToWorkspace) setWorkspaceOpen(true);
+  };
+
+  const handleCategoryTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % categories.length;
+    if (event.key === 'ArrowLeft')
+      nextIndex = (index - 1 + categories.length) % categories.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = categories.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextCategory = categories[nextIndex];
+    selectWorkspaceCategory(nextCategory.id);
+    requestAnimationFrame(() => {
+      document.getElementById(`category-tab-${nextCategory.id}`)?.focus();
+    });
+  };
+
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    const frame = requestAnimationFrame(() => {
+      const tabs = workspaceTabsRef.current;
+      const activeTab = tabs?.querySelector<HTMLElement>(
+        `#category-tab-${activeCategory}`,
+      );
+      if (!tabs || !activeTab) return;
+      const left =
+        activeTab.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2;
+      tabs.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeCategory, workspaceOpen]);
 
   useEffect(() => {
     const frameDuration = 1 / 24;
@@ -184,34 +287,128 @@ export function SarvExperience() {
     let frame = 0;
     let current = 0;
     let target = 0;
+    let initialized = false;
+    let lastIndex = -1;
     const stage = categoryStageRef.current;
     const track = categoryTrackRef.current;
     if (!stage || !track) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const slides = Array.from(track.querySelectorAll<HTMLElement>('.category-slide')).map((slide) => ({
+      slide,
+      image: slide.querySelector<HTMLElement>('.category-hero-image'),
+      panel: slide.querySelector<HTMLElement>('.category-color-panel'),
+      copy: slide.querySelector<HTMLElement>('.category-panel-copy'),
+      info: slide.querySelector<HTMLElement>('.category-info-card'),
+      specimen: slide.querySelector<HTMLElement>('.category-specimen'),
+    }));
 
     const readTarget = () => {
-      if (window.matchMedia('(max-width: 820px)').matches) return;
       const travel = Math.max(1, stage.offsetHeight - window.innerHeight);
       const progress = Math.min(1, Math.max(0, -stage.getBoundingClientRect().top / travel));
-      const max = Math.max(0, track.scrollWidth - window.innerWidth + window.innerWidth * 0.08);
-      target = progress * max;
-    };
-    const animate = () => {
-      if (!window.matchMedia('(max-width: 820px)').matches) {
-        current += (target - current) * 0.09;
-        track.style.transform = `translate3d(${-current}px,0,0)`;
-      } else {
-        track.style.transform = '';
+      target = progress * (categories.length - 1);
+      if (!initialized) {
+        current = target;
+        initialized = true;
       }
-      frame = requestAnimationFrame(animate);
     };
-    window.addEventListener('scroll', readTarget, { passive: true });
-    window.addEventListener('resize', readTarget);
-    readTarget();
-    frame = requestAnimationFrame(animate);
+
+    const animate = () => {
+      frame = 0;
+      current = reduceMotion.matches ? Math.round(target) : target;
+
+      const overallProgress = current / Math.max(1, categories.length - 1);
+      const lowerIndex = Math.floor(current);
+      const upperIndex = Math.ceil(current);
+      track.style.setProperty('--category-progress', overallProgress.toFixed(4));
+      slides.forEach(({ slide, image, panel, copy, info, specimen }, index) => {
+        const rawReveal = Math.min(1, Math.max(0, current - index + 1));
+        const stagedReveal = Math.min(1, Math.max(0, (rawReveal - 0.1) / 0.8));
+        const reveal = 1 - Math.pow(1 - stagedReveal, 3);
+        const entrance = 1 - reveal;
+        const topEdge = Math.max(0, 100 - reveal * 100);
+        const bottomEdge = Math.max(0, 100 - Math.min(1, reveal * 1.22) * 100);
+        const isVisible = index === lowerIndex || index === upperIndex;
+        const isTransitioning = isVisible && lowerIndex !== upperIndex;
+        slide.style.visibility = isVisible ? 'visible' : 'hidden';
+        slide.style.opacity = Math.min(1, reveal * 1.7).toFixed(3);
+        slide.style.willChange = isTransitioning ? 'clip-path, opacity' : 'auto';
+        slide.style.clipPath = index === 0
+          ? 'inset(0)'
+          : `polygon(${topEdge}% 0,100% 0,100% 100%,${bottomEdge}% 100%)`;
+        if (image) {
+          image.style.transform = `translate3d(${entrance * 4}%,0,0) scale(1.035)`;
+          image.style.willChange = isTransitioning ? 'transform' : 'auto';
+        }
+        if (panel) {
+          const direction = index % 2 ? -1 : 1;
+          const panelReveal = Math.min(1, Math.max(0, (reveal - 0.05) / 0.68));
+          panel.style.opacity = panelReveal.toFixed(3);
+          panel.style.transform = `translate3d(${direction * (1 - panelReveal) * 46}%,${(1 - panelReveal) * 8}%,0)`;
+          panel.style.willChange = isTransitioning ? 'opacity, transform' : 'auto';
+        }
+        if (copy) {
+          const copyReveal = Math.min(1, Math.max(0, (reveal - 0.24) / 0.56));
+          copy.style.opacity = copyReveal.toFixed(3);
+          copy.style.transform = `translate3d(0,${(1 - copyReveal) * 1.15}rem,0)`;
+          copy.style.willChange = isTransitioning ? 'opacity, transform' : 'auto';
+        }
+        if (info) {
+          const infoReveal = Math.min(1, Math.max(0, (reveal - 0.28) / 0.52));
+          info.style.opacity = infoReveal.toFixed(3);
+          info.style.transform = `translate3d(0,${(1 - infoReveal) * 2.5}rem,0)`;
+          info.style.willChange = isTransitioning ? 'opacity, transform' : 'auto';
+        }
+        if (specimen) {
+          const direction = index % 2 ? 1 : -1;
+          const specimenReveal = Math.min(1, Math.max(0, (reveal - 0.18) / 0.66));
+          specimen.style.opacity = specimenReveal.toFixed(3);
+          specimen.style.transform = `translate3d(${direction * (1 - specimenReveal) * 62}%,0,0) rotate(${direction * (1 - specimenReveal) * 3}deg)`;
+          specimen.style.willChange = isTransitioning ? 'opacity, transform' : 'auto';
+        }
+      });
+
+      const nextIndex = Math.min(categories.length - 1, Math.max(0, Math.round(current)));
+      if (nextIndex !== lastIndex) {
+        lastIndex = nextIndex;
+        setFieldIndex(nextIndex);
+      }
+    };
+
+    const scheduleUpdate = () => {
+      readTarget();
+      if (!frame) frame = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    reduceMotion.addEventListener('change', scheduleUpdate);
+    scheduleUpdate();
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', readTarget);
-      window.removeEventListener('resize', readTarget);
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      reduceMotion.removeEventListener('change', scheduleUpdate);
+      track.style.removeProperty('--category-progress');
+      slides.forEach(({ slide, image, panel, copy, info, specimen }) => {
+        slide.style.removeProperty('visibility');
+        slide.style.removeProperty('clip-path');
+        slide.style.removeProperty('opacity');
+        slide.style.removeProperty('will-change');
+        image?.style.removeProperty('transform');
+        image?.style.removeProperty('will-change');
+        panel?.style.removeProperty('opacity');
+        panel?.style.removeProperty('transform');
+        panel?.style.removeProperty('will-change');
+        copy?.style.removeProperty('opacity');
+        copy?.style.removeProperty('transform');
+        copy?.style.removeProperty('will-change');
+        info?.style.removeProperty('opacity');
+        info?.style.removeProperty('transform');
+        info?.style.removeProperty('will-change');
+        specimen?.style.removeProperty('opacity');
+        specimen?.style.removeProperty('transform');
+        specimen?.style.removeProperty('will-change');
+      });
     };
   }, []);
 
@@ -288,39 +485,69 @@ export function SarvExperience() {
 
   const { results, approximate } = useMemo(() => {
     const hasFilters = Object.values(filters).some(Boolean);
-    const exact = categoryProjects.filter((project) =>
-      (!filters.style || project.style === filters.style) &&
-      (!filters.palette || filters.palette === 'custom' || project.palettes.includes(filters.palette)) &&
-      (!filters.usage || project.usage === filters.usage) &&
-      (!filters.size || project.size === filters.size) &&
-      (!filters.budgetTier || project.budgetTier === filters.budgetTier),
-    );
-    if (exact.length && filters.palette !== 'custom') return { results: exact, approximate: false };
     if (!hasFilters) return { results: categoryProjects, approximate: false };
 
-    const customScore = (project: ProjectVisual) => customColors.reduce((score, color) => {
-      const best = Math.min(...project.paletteColors.map((projectColor) => colorDistance(color, projectColor)));
-      return score + Math.max(0, 2.5 - best / 120);
-    }, 0);
-    const scored = categoryProjects.map((project) => {
-      let score = filters.palette === 'custom' ? customScore(project) : 0;
-      if (filters.style && project.style === filters.style) score += 3;
-      if (filters.palette && project.palettes.includes(filters.palette)) score += 3;
-      if (filters.usage && project.usage === filters.usage) score += 3;
-      if (filters.size && project.size === filters.size) score += 2;
-      if (filters.budgetTier && project.budgetTier === filters.budgetTier) score += 2;
-      return { project, score };
-    }).sort((a, b) => b.score - a.score);
-    return { results: scored.slice(0, Math.min(3, scored.length)).map((item) => item.project), approximate: true };
+    const compatible = categoryProjects.filter(
+      (project) =>
+        (!filters.style || project.style === filters.style) &&
+        (!filters.usage || project.usage === filters.usage) &&
+        (!filters.size || project.size === filters.size) &&
+        (!filters.budgetTier || project.budgetTier === filters.budgetTier),
+    );
+
+    if (filters.palette !== 'custom') {
+      const exact = compatible.filter(
+        (project) =>
+          !filters.palette || project.palettes.includes(filters.palette),
+      );
+      return { results: exact, approximate: false };
+    }
+
+    if (!compatible.length) return { results: [], approximate: false };
+
+    const customScore = (project: ProjectVisual) =>
+      customColors.reduce((score, color) => {
+        const best = Math.min(
+          ...project.paletteColors.map((projectColor) =>
+            colorDistance(color, projectColor),
+          ),
+        );
+        return score + Math.max(0, 2.5 - best / 120);
+      }, 0);
+    const scored = compatible
+      .map((project) => ({ project, score: customScore(project) }))
+      .sort((a, b) => b.score - a.score);
+    return {
+      results: scored
+        .slice(0, Math.min(3, scored.length))
+        .map((item) => item.project),
+      approximate: true,
+    };
   }, [categoryProjects, customColors, filters]);
 
-  const setFilter = <Key extends keyof Filters>(key: Key, value: Filters[Key]) => {
-    setFilters((current) => ({ ...current, [key]: current[key] === value ? '' : value }));
+  const setFilter = <Key extends keyof Filters>(
+    key: Key,
+    value: Filters[Key],
+  ) => {
+    setFilters((current) => ({
+      ...current,
+      [key]: current[key] === value ? '' : value,
+    }));
+    requestAnimationFrame(() => resultPanelRef.current?.scrollTo({ top: 0 }));
+  };
+
+  const clearFilters = () => {
+    setFilters(emptyFilters);
+    requestAnimationFrame(() => resultPanelRef.current?.scrollTo({ top: 0 }));
   };
 
   const updateColor = (index: number, value: string) => {
     if (!/^#[0-9a-f]{6}$/i.test(value)) return;
-    setCustomColors((current) => current.map((color, colorIndex) => colorIndex === index ? value.toUpperCase() : color));
+    setCustomColors((current) =>
+      current.map((color, colorIndex) =>
+        colorIndex === index ? value.toUpperCase() : color,
+      ),
+    );
   };
 
   const activeCategoryData = categoryMap.get(activeCategory)!;
@@ -371,18 +598,36 @@ export function SarvExperience() {
 
       <section ref={categoryStageRef} className="category-stage" id="work" aria-labelledby="category-title">
         <div className="category-sticky">
-          <div className="category-heading"><p className="section-kicker">Fields of work / 01—06</p><h2 id="category-title">Move through<br /><i>the work.</i></h2></div>
-          <div ref={categoryTrackRef} className="category-track">
-            {categories.map((category) => (
-              <button className="category-panel" type="button" key={category.id} onClick={() => openCategory(category.id)} aria-label={`Explore ${category.label} projects`}>
-                <Image src={category.image} alt="" fill sizes="(max-width: 820px) 82vw, 47vw" />
-                <span className="category-shade" />
-                <span className="category-index">{category.index}</span>
-                <span className="category-copy"><strong>{category.label}</strong><small>{category.descriptor}</small></span>
-                <span className="category-open">Explore <ArrowUpRight /></span>
-              </button>
+          <div ref={categoryTrackRef} className="category-showcase">
+            <p className="category-heading" id="category-title"><span>Fields of work</span> 01—06</p>
+            <fieldset className="category-controls" aria-label="Choose a field of work">
+              <button type="button" disabled={fieldIndex === 0} onClick={() => goToField(fieldIndex - 1)} aria-label="Previous field"><ArrowLeft /></button>
+              <span aria-live="polite" aria-atomic="true">{categories[fieldIndex].index} / 06</span>
+              <button type="button" disabled={fieldIndex === categories.length - 1} onClick={() => goToField(fieldIndex + 1)} aria-label="Next field"><ArrowRight /></button>
+            </fieldset>
+            {categories.map((category, index) => (
+              <article className={`category-slide ${index % 2 ? 'is-reverse' : ''}`} data-category={category.id} key={category.id} style={{ zIndex: index + 1 }} aria-hidden={fieldIndex !== index}>
+                <div className="category-media">
+                  <Image className="category-hero-image" src={category.image} alt={`${category.label} architectural woodwork`} fill priority={index === 0} sizes="100vw" style={{ objectPosition: fieldObjectPositions[category.id] }} />
+                  <span className="category-wash" />
+                </div>
+                <div className="category-color-panel">
+                  <div className="category-panel-copy">
+                    <small>Field / {category.index}</small>
+                    <h2>{category.label}</h2>
+                    <strong>{fieldTaglines[category.id]}</strong>
+                    <button type="button" tabIndex={fieldIndex === index ? 0 : -1} onClick={() => openCategory(category.id)}>Explore projects <ArrowUpRight /></button>
+                  </div>
+                </div>
+                <div className="category-info-card">
+                  <span>{projects.filter((project) => project.category === category.id).length.toString().padStart(2, '0')} projects</span>
+                  <p>{category.descriptor}</p>
+                </div>
+                <div className="category-specimen" aria-hidden="true"><Image src={category.image} alt="" fill sizes="18vw" style={{ objectPosition: fieldObjectPositions[category.id] }} /></div>
+              </article>
             ))}
-            <div className="category-end"><span>SARV</span><p>Six disciplines.<br />One architectural language.</p><a href="#selected">Selected projects</a></div>
+            <div className="category-progress" aria-hidden="true"><i /></div>
+            <p className="category-scroll-hint">Scroll to move through the fields</p>
           </div>
         </div>
       </section>
@@ -390,7 +635,7 @@ export function SarvExperience() {
       <section className="selected-projects" id="selected" aria-labelledby="selected-title">
         <header><p className="section-kicker">Selected projects / 03</p><h2 id="selected-title">A closer look at <i>precision.</i></h2></header>
         {selectedProjects.map((project, index) => (
-          <button key={project.id} type="button" className={`feature-project feature-${index + 1}`} onClick={() => setDetailProject(project)}>
+          <button key={project.id} type="button" className={`feature-project feature-${index + 1}`} onClick={() => openProject(project)}>
             <span className="feature-image"><Image src={project.image} alt={project.alt} fill sizes="(max-width: 820px) 100vw, 72vw" /></span>
             <span className="feature-number">0{index + 1}</span>
             <span className="feature-copy"><small>{categoryMap.get(project.category)?.label} · {titleCase(project.style)}</small><strong>{project.name}</strong><em>View project <ArrowUpRight /></em></span>
@@ -427,49 +672,404 @@ export function SarvExperience() {
 
       <Dialog open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
         <DialogContent className="category-dialog" showCloseButton={false}>
-          <DialogTitle className="sr-only">{activeCategoryData.label} project workspace</DialogTitle>
-          <DialogDescription className="sr-only">Browse and filter SARV {activeCategoryData.label.toLowerCase()} projects.</DialogDescription>
-          <header className="workspace-header"><button type="button" onClick={() => setWorkspaceOpen(false)}><ArrowLeft /> Back to work</button><span>SARV / PROJECT BROWSER</span><button type="button" onClick={() => setWorkspaceOpen(false)} aria-label="Close workspace"><X /></button></header>
-          <div className="workspace-tabs" role="tablist" aria-label="Project category">
-            {categories.map((category) => <button key={category.id} role="tab" aria-selected={activeCategory === category.id} onClick={() => { setActiveCategory(category.id); setFilters(emptyFilters); }}>{category.shortLabel}</button>)}
+          <DialogTitle className="sr-only">
+            {activeCategoryData.label} project workspace
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Browse and filter SARV {activeCategoryData.label.toLowerCase()}{' '}
+            projects.
+          </DialogDescription>
+          <header className="workspace-header">
+            <button type="button" onClick={() => setWorkspaceOpen(false)}>
+              <ArrowLeft /> Back to work
+            </button>
+            <span>SARV / PROJECT BROWSER</span>
+            <button
+              type="button"
+              onClick={() => setWorkspaceOpen(false)}
+              aria-label="Close workspace"
+            >
+              <X />
+            </button>
+          </header>
+          <div
+            ref={workspaceTabsRef}
+            className="workspace-tabs"
+            role="tablist"
+            aria-label="Project category"
+          >
+            {categories.map((category, index) => (
+              <button
+                key={category.id}
+                id={`category-tab-${category.id}`}
+                role="tab"
+                aria-controls="workspace-results"
+                aria-selected={activeCategory === category.id}
+                tabIndex={activeCategory === category.id ? 0 : -1}
+                onClick={() => selectWorkspaceCategory(category.id)}
+                onKeyDown={(event) => handleCategoryTabKeyDown(event, index)}
+              >
+                {category.shortLabel}
+              </button>
+            ))}
           </div>
-          <div className="workspace-body">
-            <aside className="filter-panel">
-              <div className="filter-title"><SlidersHorizontal /><span>Refine</span><button type="button" onClick={() => setFilters(emptyFilters)}>Clear all</button></div>
-              <FilterGroup label="Style" values={availableStyles} value={filters.style} onChange={(value) => setFilter('style', value)} />
-              <div className="filter-group"><span className="filter-label">Palette</span><div className="palette-options">
-                {availablePalettes.map((preset) => <button type="button" key={preset.id} className={filters.palette === preset.id ? 'is-active' : ''} onClick={() => setFilter('palette', preset.id)}><span className="duo-swatch">{preset.colors.map((color) => <i key={color} style={{ background: color }} />)}</span>{preset.label}</button>)}
-                <button type="button" className={filters.palette === 'custom' ? 'is-active' : ''} onClick={() => setFilter('palette', 'custom')}><span className="custom-swatch">+</span>Custom palette</button>
-              </div></div>
-              {filters.palette === 'custom' && <div className="custom-palette"><div className="custom-palette-bar">{customColors.map((color) => <i key={color} style={{ background: color }} />)}</div>{customColors.map((color, index) => { const rgb = hexToRgb(color); return <div className="color-row" key={`${index}-${color}`}><input type="color" value={color} onChange={(event) => updateColor(index, event.target.value)} aria-label={`Custom color ${index + 1}`} /><input value={color} onChange={(event) => updateColor(index, event.target.value)} aria-label={`HEX value ${index + 1}`} /><span>RGB {rgb.join(' · ')}</span>{customColors.length > 1 && <button type="button" onClick={() => setCustomColors((current) => current.filter((_, currentIndex) => currentIndex !== index))} aria-label={`Remove color ${index + 1}`}><X /></button>}</div>; })}{customColors.length < 4 && <button className="add-color" type="button" onClick={() => setCustomColors((current) => [...current, '#D9D9D9'])}><Plus /> Add color</button>}</div>}
-              {availableUsages.length > 0 && <FilterGroup label="Usage" values={availableUsages} value={filters.usage} onChange={(value) => setFilter('usage', value)} />}
-              <FilterGroup label="Size" values={availableSizes} value={filters.size} onChange={(value) => setFilter('size', value as SizeRange)} />
-              <FilterGroup label="Budget classification" values={availableBudgets} value={filters.budgetTier} onChange={(value) => setFilter('budgetTier', value as BudgetTier)} />
+          <div ref={workspaceBodyRef} className="workspace-body">
+            <aside ref={filterPanelRef} className="filter-panel">
+              <div className="filter-title">
+                <SlidersHorizontal />
+                <span>Refine</span>
+                <button type="button" onClick={clearFilters}>
+                  Clear all
+                </button>
+              </div>
+              <FilterGroup
+                label="Style"
+                values={availableStyles}
+                value={filters.style}
+                onChange={(value) => setFilter('style', value)}
+              />
+              <div className="filter-group">
+                <span className="filter-label">Palette</span>
+                <div className="palette-options">
+                  {availablePalettes.map((preset) => (
+                    <button
+                      type="button"
+                      key={preset.id}
+                      aria-pressed={filters.palette === preset.id}
+                      className={
+                        filters.palette === preset.id ? 'is-active' : ''
+                      }
+                      onClick={() => setFilter('palette', preset.id)}
+                    >
+                      <span className="duo-swatch">
+                        {preset.colors.map((color) => (
+                          <i key={color} style={{ background: color }} />
+                        ))}
+                      </span>
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    aria-pressed={filters.palette === 'custom'}
+                    className={filters.palette === 'custom' ? 'is-active' : ''}
+                    onClick={() => setFilter('palette', 'custom')}
+                  >
+                    <span className="custom-swatch">+</span>Custom palette
+                  </button>
+                </div>
+              </div>
+              {filters.palette === 'custom' && (
+                <div className="custom-palette">
+                  <div className="custom-palette-bar">
+                    {customColors.map((color, index) => (
+                      <i
+                        key={`swatch-${index}`}
+                        style={{ background: color }}
+                      />
+                    ))}
+                  </div>
+                  {customColors.map((color, index) => {
+                    const rgb = hexToRgb(color);
+                    return (
+                      <div className="color-row" key={`color-${index}`}>
+                        <input
+                          type="color"
+                          value={color}
+                          onChange={(event) =>
+                            updateColor(index, event.target.value)
+                          }
+                          aria-label={`Custom color ${index + 1}`}
+                        />
+                        <HexInput
+                          key={color}
+                          value={color}
+                          label={`HEX value ${index + 1}`}
+                          onCommit={(value) => updateColor(index, value)}
+                        />
+                        <span>RGB {rgb.join(' · ')}</span>
+                        {customColors.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCustomColors((current) =>
+                                current.filter(
+                                  (_, currentIndex) => currentIndex !== index,
+                                ),
+                              )
+                            }
+                            aria-label={`Remove color ${index + 1}`}
+                          >
+                            <X />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {customColors.length < 4 && (
+                    <button
+                      className="add-color"
+                      type="button"
+                      onClick={() =>
+                        setCustomColors((current) => [...current, '#D9D9D9'])
+                      }
+                    >
+                      <Plus /> Add color
+                    </button>
+                  )}
+                </div>
+              )}
+              {availableUsages.length > 0 && (
+                <FilterGroup
+                  label="Usage"
+                  values={availableUsages}
+                  value={filters.usage}
+                  onChange={(value) => setFilter('usage', value)}
+                />
+              )}
+              <FilterGroup
+                label="Size"
+                values={availableSizes}
+                value={filters.size}
+                onChange={(value) => setFilter('size', value as SizeRange)}
+              />
+              <FilterGroup
+                label="Budget classification"
+                values={availableBudgets}
+                value={filters.budgetTier}
+                onChange={(value) =>
+                  setFilter('budgetTier', value as BudgetTier)
+                }
+              />
+              <button
+                className="filter-results-action"
+                type="button"
+                disabled={!results.length}
+                aria-controls="workspace-results"
+                onClick={() =>
+                  resultPanelRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  })
+                }
+              >
+                {results.length ? (
+                  <>
+                    View {results.length.toString().padStart(2, '0')}{' '}
+                    {results.length === 1 ? 'project' : 'projects'}{' '}
+                    <ArrowDown />
+                  </>
+                ) : (
+                  'No exact matches'
+                )}
+              </button>
             </aside>
-            <section className="result-panel" aria-live="polite">
-              <div className="result-heading"><div><span>{activeCategoryData.index} / {activeCategoryData.label}</span><h3>{activeCategoryData.descriptor}</h3></div><strong>{results.length.toString().padStart(2, '0')} projects</strong></div>
-              {approximate && <p className="nearest-note">No exact match. Showing the closest SARV projects.</p>}
-              <div className="result-grid">{results.map((project) => <button key={project.id} type="button" className="result-card" onClick={() => setDetailProject(project)}><span><Image src={project.image} alt={project.alt} fill sizes="(max-width: 820px) 92vw, 35vw" /></span><div><small>{titleCase(project.style)} · {titleCase(project.size)}</small><strong>{project.name}</strong><em>View <ArrowUpRight /></em></div></button>)}</div>
+            <section
+              ref={resultPanelRef}
+              className="result-panel"
+              id="workspace-results"
+              role="tabpanel"
+              aria-labelledby={`category-tab-${activeCategory}`}
+              aria-live="polite"
+            >
+              <div className="result-heading">
+                <div>
+                  <span>
+                    {activeCategoryData.index} / {activeCategoryData.label}
+                  </span>
+                  <h3>{activeCategoryData.descriptor}</h3>
+                </div>
+                <strong>
+                  {results.length.toString().padStart(2, '0')} projects
+                </strong>
+              </div>
+              {approximate && (
+                <p className="nearest-note">
+                  Closest palette matches within your other filters.
+                </p>
+              )}
+              {results.length ? (
+                <div className="result-grid">
+                  {results.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      className="result-card"
+                      onClick={() => openProject(project, true)}
+                    >
+                      <span>
+                        <Image
+                          src={project.image}
+                          alt={project.alt}
+                          fill
+                          sizes="(max-width: 820px) 92vw, 35vw"
+                        />
+                      </span>
+                      <div>
+                        <small>
+                          {titleCase(project.style)} · {titleCase(project.size)}
+                        </small>
+                        <strong>{project.name}</strong>
+                        <em>
+                          View <ArrowUpRight />
+                        </em>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-results">
+                  <span>Nothing matches every selected filter.</span>
+                  <p>
+                    Adjust one choice or reset the filters to see this field of
+                    work again.
+                  </p>
+                  <button type="button" onClick={clearFilters}>
+                    Reset filters
+                  </button>
+                </div>
+              )}
             </section>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Sheet open={Boolean(detailProject)} onOpenChange={(open) => { if (!open) setDetailProject(null); }}>
-        <SheetContent className="project-sheet" side="right" showCloseButton={false}>
-          {detailProject && <>
-            <header className="project-sheet-header"><button type="button" onClick={() => setDetailProject(null)}><ArrowLeft /> Close project</button><span>SARV / {categoryMap.get(detailProject.category)?.label}</span></header>
-            <div className="project-detail-hero"><Image src={detailProject.image} alt={detailProject.alt} fill sizes="100vw" /><div><small>{titleCase(detailProject.style)} · {titleCase(detailProject.budgetTier)} classification</small><SheetTitle>{detailProject.name}</SheetTitle></div></div>
-            <SheetDescription className="project-summary">{detailProject.statement}</SheetDescription>
-            <div className="project-spec"><div><span>Category</span><strong>{categoryMap.get(detailProject.category)?.label}</strong></div><div><span>Scale</span><strong>{titleCase(detailProject.size)}</strong></div><div><span>Materials</span><strong>{detailProject.materials.join(' · ')}</strong></div></div>
-            {detailProject.gallery && <div className="project-gallery">{detailProject.gallery.slice(1).map((image, index) => <figure key={image}><Image src={image} alt={`${detailProject.name} ${index === 0 ? 'alternate architectural view' : 'joinery detail'}`} fill sizes="(max-width: 820px) 100vw, 50vw" /></figure>)}</div>}
-          </>}
+      <Sheet
+        open={Boolean(detailProject)}
+        onOpenChange={(open) => {
+          if (!open) closeProject();
+        }}
+      >
+        <SheetContent
+          className="project-sheet"
+          side="right"
+          showCloseButton={false}
+        >
+          {detailProject && (
+            <>
+              <header className="project-sheet-header">
+                <button type="button" onClick={closeProject}>
+                  <ArrowLeft /> Close project
+                </button>
+                <span>
+                  SARV / {categoryMap.get(detailProject.category)?.label}
+                </span>
+              </header>
+              <div className="project-detail-hero">
+                <Image
+                  src={detailProject.image}
+                  alt={detailProject.alt}
+                  fill
+                  sizes="100vw"
+                />
+                <div>
+                  <small>
+                    {titleCase(detailProject.style)} ·{' '}
+                    {titleCase(detailProject.budgetTier)} classification
+                  </small>
+                  <SheetTitle>{detailProject.name}</SheetTitle>
+                </div>
+              </div>
+              <SheetDescription className="project-summary">
+                {detailProject.statement}
+              </SheetDescription>
+              <div className="project-spec">
+                <div>
+                  <span>Category</span>
+                  <strong>
+                    {categoryMap.get(detailProject.category)?.label}
+                  </strong>
+                </div>
+                <div>
+                  <span>Scale</span>
+                  <strong>{titleCase(detailProject.size)}</strong>
+                </div>
+                <div>
+                  <span>Materials</span>
+                  <strong>{detailProject.materials.join(' · ')}</strong>
+                </div>
+              </div>
+              {detailProject.gallery && (
+                <div className="project-gallery">
+                  {detailProject.gallery.slice(1).map((image, index) => (
+                    <figure key={image}>
+                      <Image
+                        src={image}
+                        alt={`${detailProject.name} ${index === 0 ? 'alternate architectural view' : 'joinery detail'}`}
+                        fill
+                        sizes="(max-width: 820px) 100vw, 50vw"
+                      />
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </SheetContent>
       </Sheet>
     </main>
   );
 }
 
-function FilterGroup({ label, values, value, onChange }: { label: string; values: string[]; value: string; onChange: (value: string) => void }) {
-  return <div className="filter-group"><span className="filter-label">{label}</span><div className="chip-row">{values.map((item) => <button key={item} type="button" className={value === item ? 'is-active' : ''} onClick={() => onChange(item)}>{titleCase(item)}</button>)}</div></div>;
+function FilterGroup({
+  label,
+  values,
+  value,
+  onChange,
+}: {
+  label: string;
+  values: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="filter-group">
+      <span className="filter-label">{label}</span>
+      <div className="chip-row">
+        {values.map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-pressed={value === item}
+            className={value === item ? 'is-active' : ''}
+            onClick={() => onChange(item)}
+          >
+            {titleCase(item)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HexInput({
+  value,
+  label,
+  onCommit,
+}: {
+  value: string;
+  label: string;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  const commit = () => {
+    if (!/^#[0-9a-f]{6}$/i.test(draft)) {
+      setDraft(value);
+      return;
+    }
+    onCommit(draft.toUpperCase());
+  };
+
+  return (
+    <input
+      value={draft}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+      aria-label={label}
+    />
+  );
 }
