@@ -8,13 +8,8 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Menu, Plus, SlidersHorizontal, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Sheet,
   SheetContent,
@@ -110,11 +105,16 @@ export function SarvExperience() {
   const workspaceTabsRef = useRef<HTMLDivElement>(null);
   const filterPanelRef = useRef<HTMLElement>(null);
   const resultPanelRef = useRef<HTMLElement>(null);
+  const workspaceLayerRef = useRef<HTMLDialogElement>(null);
+  const workspaceReturnFocusRef = useRef<HTMLElement | null>(null);
   const detailFromWorkspaceRef = useRef(false);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fieldIndex, setFieldIndex] = useState(0);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceMounted, setWorkspaceMounted] = useState(false);
+  const [workspaceVisible, setWorkspaceVisible] = useState(false);
+  const [workspaceSettled, setWorkspaceSettled] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>('kitchen');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [customColors, setCustomColors] = useState(['#79573D', '#F4F1EB']);
@@ -137,6 +137,10 @@ export function SarvExperience() {
   };
 
   const openCategory = (category: CategoryId) => {
+    workspaceReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     selectWorkspaceCategory(category);
     setWorkspaceOpen(true);
   };
@@ -200,6 +204,99 @@ export function SarvExperience() {
     });
     return () => cancelAnimationFrame(frame);
   }, [activeCategory, workspaceOpen]);
+
+  useEffect(() => {
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let lifecycleTimer: ReturnType<typeof setTimeout> | undefined;
+
+    if (workspaceOpen) {
+      firstFrame = requestAnimationFrame(() => {
+        setWorkspaceMounted(true);
+        setWorkspaceSettled(false);
+        secondFrame = requestAnimationFrame(() =>
+          setWorkspaceVisible(true),
+        );
+      });
+      lifecycleTimer = setTimeout(() => setWorkspaceSettled(true), 380);
+    } else {
+      firstFrame = requestAnimationFrame(() => {
+        setWorkspaceSettled(false);
+        setWorkspaceVisible(false);
+      });
+      lifecycleTimer = setTimeout(() => setWorkspaceMounted(false), 380);
+    }
+
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      if (lifecycleTimer) clearTimeout(lifecycleTimer);
+    };
+  }, [workspaceOpen]);
+
+  useEffect(() => {
+    if (!workspaceMounted) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const rootOverflow = root.style.overflow;
+    const rootOverscroll = root.style.overscrollBehavior;
+    const bodyOverflow = body.style.overflow;
+    const bodyOverscroll = body.style.overscrollBehavior;
+    const focusFrame = requestAnimationFrame(() => {
+      workspaceLayerRef.current
+        ?.querySelector<HTMLElement>('[data-workspace-initial-focus]')
+        ?.focus();
+    });
+
+    root.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+    body.style.overscrollBehavior = 'none';
+
+    const handleWorkspaceKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setWorkspaceOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const focusable = Array.from(
+        workspaceLayerRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter(
+        (element) =>
+          element.getAttribute('aria-hidden') !== 'true' &&
+          element.offsetParent !== null,
+      );
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleWorkspaceKeyDown);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', handleWorkspaceKeyDown);
+      root.style.overflow = rootOverflow;
+      root.style.overscrollBehavior = rootOverscroll;
+      body.style.overflow = bodyOverflow;
+      body.style.overscrollBehavior = bodyOverscroll;
+      if (!detailFromWorkspaceRef.current) {
+        workspaceReturnFocusRef.current?.focus({ preventScroll: true });
+      }
+    };
+  }, [workspaceMounted]);
 
   useEffect(() => {
     const frameDuration = 1 / 24;
@@ -553,7 +650,11 @@ export function SarvExperience() {
   const activeCategoryData = categoryMap.get(activeCategory)!;
 
   return (
-    <main className="sarv-shell">
+    <main
+      className={`sarv-shell ${workspaceSettled ? 'is-workspace-obscured' : ''}`}
+      aria-hidden={workspaceMounted || undefined}
+      inert={workspaceMounted ? true : undefined}
+    >
       <header className={`site-header ${scrolled ? 'is-scrolled' : ''}`}>
         <a className="wordmark" href="#top" aria-label="SARV home">SARV</a>
         <nav aria-label="Primary navigation">
@@ -670,17 +771,30 @@ export function SarvExperience() {
         <footer><span>SARV</span><span>Architectural woodwork · Custom interiors</span><a href="#top">Back to top ↑</a></footer>
       </section>
 
-      <Dialog open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
-        <DialogContent className="category-dialog" showCloseButton={false}>
-          <DialogTitle className="sr-only">
+      {workspaceMounted &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <dialog
+            open
+            ref={workspaceLayerRef}
+            className={`category-workspace-layer ${workspaceVisible ? 'is-visible' : ''}`}
+            aria-modal="true"
+            aria-labelledby="category-workspace-title"
+            aria-describedby="category-workspace-description"
+          >
+          <h2 className="sr-only" id="category-workspace-title">
             {activeCategoryData.label} project workspace
-          </DialogTitle>
-          <DialogDescription className="sr-only">
+          </h2>
+          <p className="sr-only" id="category-workspace-description">
             Browse and filter SARV {activeCategoryData.label.toLowerCase()}{' '}
             projects.
-          </DialogDescription>
+          </p>
           <header className="workspace-header">
-            <button type="button" onClick={() => setWorkspaceOpen(false)}>
+            <button
+              type="button"
+              data-workspace-initial-focus
+              onClick={() => setWorkspaceOpen(false)}
+            >
               <ArrowLeft /> Back to work
             </button>
             <span>SARV / PROJECT BROWSER</span>
@@ -931,8 +1045,9 @@ export function SarvExperience() {
               )}
             </section>
           </div>
-        </DialogContent>
-      </Dialog>
+          </dialog>,
+          document.body,
+        )}
 
       <Sheet
         open={Boolean(detailProject)}
