@@ -420,28 +420,29 @@ button:focus-visible {
   max-height: 78svh;
   min-height: 34rem;
   overflow: hidden;
-  perspective: 1500px;
-  perspective-origin: 50% 43%;
+  perspective: 1250px;
+  perspective-origin: 50% 46%;
   border-top: 1px solid rgb(22 21 17 / 24%);
   border-bottom: 1px solid rgb(22 21 17 / 24%);
-  background: #d9d5ce;
+  background:
+    linear-gradient(90deg, rgb(22 21 17 / 7%) 1px, transparent 1px) 50% 0 / 12.5% 100%,
+    linear-gradient(180deg, #c9c2b8 0%, #d9d5ce 62%, #c4b9ad 100%);
+  background-position-x: 50%;
   touch-action: pan-y;
   user-select: none;
 }
 
 .category-plane {
   position: absolute;
-  top: 7%;
+  top: 8%;
   left: 50%;
-  width: min(54vw, 55rem);
-  height: 78%;
+  width: min(66vw, 67rem);
+  height: 76%;
   padding: clamp(1.25rem, 2.4vw, 2.5rem);
   overflow: hidden;
   backface-visibility: hidden;
-  background:
-    linear-gradient(132deg, rgb(255 255 255 / 20%), transparent 38%),
-    var(--plane-tone);
-  box-shadow: 0 2rem 5rem rgb(32 26 20 / 20%);
+  background: var(--plane-depth);
+  box-shadow: 0 2.2rem 6rem rgb(26 21 17 / 30%);
   color: #f6f3ec;
   transform-style: preserve-3d;
   will-change: transform, opacity;
@@ -450,15 +451,34 @@ button:focus-visible {
 .category-plane::after {
   position: absolute;
   inset: 0;
-  border: 1px solid rgb(255 255 255 / 22%);
+  z-index: 2;
+  border: 1px solid rgb(255 255 255 / 32%);
   content: "";
+  pointer-events: none;
+}
+
+.category-plane-image {
+  z-index: 0;
+  object-fit: cover;
+  filter: saturate(0.78) contrast(1.04) brightness(0.86);
+  transform: scale(1.045);
+}
+
+.category-plane-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgb(17 14 11 / 48%), transparent 42%, rgb(17 14 11 / 14%)),
+    linear-gradient(0deg, rgb(17 14 11 / 62%), transparent 58%),
+    linear-gradient(132deg, color-mix(in srgb, var(--plane-tone) 42%, transparent), transparent 52%);
   pointer-events: none;
 }
 
 .category-open-trigger {
   position: absolute;
   inset: 0;
-  z-index: 7;
+  z-index: 8;
   padding: 0;
   border: 0;
   background: transparent;
@@ -488,20 +508,20 @@ button:focus-visible {
 
 .category-plane[data-slot="previous"] {
   z-index: 1;
-  transform: translate3d(-103%, 2%, -130px) rotateY(26deg);
+  transform: translate3d(-108%, 2%, -128px) rotateY(23deg) scale(0.94);
   transform-origin: right center;
   filter: brightness(0.7);
 }
 
 .category-plane[data-slot="active"] {
   z-index: 3;
-  transform: translate3d(-50%, 0, 80px) rotateY(0deg);
+  transform: translate3d(-50%, 0, 48px) rotateY(0deg) scale(1);
   transform-origin: center center;
 }
 
 .category-plane[data-slot="next"] {
   z-index: 1;
-  transform: translate3d(3%, 2%, -130px) rotateY(-26deg);
+  transform: translate3d(8%, 2%, -128px) rotateY(-23deg) scale(0.94);
   transform-origin: left center;
   filter: brightness(0.7);
 }
@@ -515,11 +535,13 @@ button:focus-visible {
 }
 
 .category-plane[data-slot="hidden-left"] {
-  transform: translate3d(-156%, 3%, -220px) rotateY(32deg);
+  transform: translate3d(-154%, 3%, -218px) rotateY(29deg) scale(0.91);
+  transform-origin: right center;
 }
 
 .category-plane[data-slot="hidden-right"] {
-  transform: translate3d(56%, 3%, -220px) rotateY(-32deg);
+  transform: translate3d(54%, 3%, -218px) rotateY(-29deg) scale(0.91);
+  transform-origin: left center;
 }
 
 .plane-number,
@@ -527,7 +549,7 @@ button:focus-visible {
 .plane-rule,
 .category-plane p {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
 }
 
 .plane-number {
@@ -540,7 +562,7 @@ button:focus-visible {
 .plane-mark {
   right: -0.04em;
   bottom: -0.2em;
-  color: rgb(255 255 255 / 15%);
+  color: rgb(255 255 255 / 12%);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(15rem, 36vw, 36rem);
   font-weight: 400;
@@ -566,10 +588,10 @@ button:focus-visible {
 
 .field-typography {
   position: absolute;
-  bottom: 7%;
+  bottom: 8%;
   left: clamp(1.25rem, 4vw, 4.5rem);
   z-index: 5;
-  width: min(74vw, 72rem);
+  width: min(79vw, 78rem);
   color: #f6f3ec;
   pointer-events: none;
 }
@@ -585,7 +607,7 @@ button:focus-visible {
 .field-title-mask h3 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(3.4rem, 8.5vw, 9.2rem);
+  font-size: clamp(3.4rem, 8.8vw, 9.6rem);
   font-weight: 400;
   line-height: 0.83;
   letter-spacing: -0.06em;
@@ -594,15 +616,17 @@ button:focus-visible {
 
 .field-information {
   position: absolute;
-  top: 12%;
+  top: 13%;
   right: clamp(1.25rem, 4vw, 4.5rem);
   z-index: 5;
   display: grid;
-  width: min(20rem, 24vw);
-  min-height: 8rem;
-  padding: 1rem 0 0 1.25rem;
-  border-top: 1px solid rgb(255 255 255 / 54%);
-  border-left: 1px solid rgb(255 255 255 / 28%);
+  width: min(22rem, 25vw);
+  min-height: 10rem;
+  padding: 1.2rem 1.25rem 1.15rem;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 34%);
+  background: rgb(36 28 23 / 58%);
+  backdrop-filter: blur(12px);
   color: #f6f3ec;
 }
 
@@ -622,20 +646,20 @@ button:focus-visible {
   top: 0;
   bottom: 0;
   z-index: 4;
-  width: 4.5%;
-  transform: skewX(-13deg);
+  width: 24%;
+  clip-path: polygon(26% 0, 100% 0, 74% 100%, 0 100%);
   pointer-events: none;
   will-change: transform, opacity;
 }
 
 .field-wipe-one {
-  left: -3%;
+  left: -24%;
   background: #735038;
 }
 
 .field-wipe-two {
-  right: -3%;
-  background: #3a3530;
+  left: -31%;
+  background: #b2a392;
 }
 
 .field-controls {
@@ -2071,24 +2095,24 @@ button:focus-visible {
 
   .category-plane {
     top: 8%;
-    width: min(72vw, 39rem);
+    width: min(76vw, 43rem);
     height: 76%;
   }
 
   .category-plane[data-slot="previous"] {
-    transform: translate3d(-111%, 2%, -90px) rotateY(18deg);
+    transform: translate3d(-112%, 2%, -88px) rotateY(16deg) scale(0.94);
   }
 
   .category-plane[data-slot="next"] {
-    transform: translate3d(11%, 2%, -90px) rotateY(-18deg);
+    transform: translate3d(12%, 2%, -88px) rotateY(-16deg) scale(0.94);
   }
 
   .category-plane[data-slot="hidden-left"] {
-    transform: translate3d(-166%, 3%, -180px) rotateY(24deg);
+    transform: translate3d(-162%, 3%, -178px) rotateY(22deg) scale(0.91);
   }
 
   .category-plane[data-slot="hidden-right"] {
-    transform: translate3d(66%, 3%, -180px) rotateY(-24deg);
+    transform: translate3d(62%, 3%, -178px) rotateY(-22deg) scale(0.91);
   }
 
   .field-information {
@@ -2198,24 +2222,24 @@ button:focus-visible {
 
   .category-plane {
     top: 7%;
-    width: 82vw;
+    width: 84vw;
     height: 78%;
   }
 
   .category-plane[data-slot="previous"] {
-    transform: translate3d(-120%, 2%, -60px) rotateY(10deg);
+    transform: translate3d(-118%, 2%, -54px) rotateY(9deg) scale(0.94);
   }
 
   .category-plane[data-slot="next"] {
-    transform: translate3d(20%, 2%, -60px) rotateY(-10deg);
+    transform: translate3d(18%, 2%, -54px) rotateY(-9deg) scale(0.94);
   }
 
   .category-plane[data-slot="hidden-left"] {
-    transform: translate3d(-175%, 3%, -150px) rotateY(16deg);
+    transform: translate3d(-168%, 3%, -144px) rotateY(15deg) scale(0.91);
   }
 
   .category-plane[data-slot="hidden-right"] {
-    transform: translate3d(75%, 3%, -150px) rotateY(-16deg);
+    transform: translate3d(68%, 3%, -144px) rotateY(-15deg) scale(0.91);
   }
 
   .plane-mark {

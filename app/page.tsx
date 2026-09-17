@@ -284,10 +284,10 @@ const getPlanePose = (slot: PlaneSlot) => {
   const isTablet = window.matchMedia("(max-width: 900px)").matches;
 
   const positions = isMobile
-    ? { previous: -120, next: 20, hiddenLeft: -175, hiddenRight: 75, rotation: 10, depth: -60 }
+    ? { previous: -118, next: 18, hiddenLeft: -168, hiddenRight: 68, rotation: 9, depth: -54 }
     : isTablet
-      ? { previous: -111, next: 11, hiddenLeft: -166, hiddenRight: 66, rotation: 18, depth: -90 }
-      : { previous: -103, next: 3, hiddenLeft: -156, hiddenRight: 56, rotation: 26, depth: -130 };
+      ? { previous: -112, next: 12, hiddenLeft: -162, hiddenRight: 62, rotation: 16, depth: -88 }
+      : { previous: -108, next: 8, hiddenLeft: -154, hiddenRight: 54, rotation: 23, depth: -128 };
 
   const poses = {
     "hidden-left": {
@@ -297,6 +297,8 @@ const getPlanePose = (slot: PlaneSlot) => {
       yPercent: 3,
       z: positions.depth - 90,
       rotateY: positions.rotation + 6,
+      scale: 0.91,
+      transformOrigin: "right center",
       autoAlpha: 0,
     },
     previous: {
@@ -306,6 +308,8 @@ const getPlanePose = (slot: PlaneSlot) => {
       yPercent: 2,
       z: positions.depth,
       rotateY: positions.rotation,
+      scale: 0.94,
+      transformOrigin: "right center",
       autoAlpha: 1,
     },
     active: {
@@ -313,8 +317,10 @@ const getPlanePose = (slot: PlaneSlot) => {
       y: 0,
       xPercent: -50,
       yPercent: 0,
-      z: 80,
+      z: 48,
       rotateY: 0,
+      scale: 1,
+      transformOrigin: "center center",
       autoAlpha: 1,
     },
     next: {
@@ -324,6 +330,8 @@ const getPlanePose = (slot: PlaneSlot) => {
       yPercent: 2,
       z: positions.depth,
       rotateY: -positions.rotation,
+      scale: 0.94,
+      transformOrigin: "left center",
       autoAlpha: 1,
     },
     "hidden-right": {
@@ -333,6 +341,8 @@ const getPlanePose = (slot: PlaneSlot) => {
       yPercent: 3,
       z: positions.depth - 90,
       rotateY: -positions.rotation - 6,
+      scale: 0.91,
+      transformOrigin: "left center",
       autoAlpha: 0,
     },
   } as const;
@@ -792,6 +802,7 @@ export default function Home() {
       const label = fieldLabelRef.current;
       const information = fieldInformationRef.current;
       const typography = fieldTypographyRef.current;
+      const scene = fieldSceneRef.current;
       const wipeOne = fieldWipeOneRef.current;
       const wipeTwo = fieldWipeTwoRef.current;
 
@@ -804,6 +815,7 @@ export default function Home() {
         !label ||
         !information ||
         !typography ||
+        !scene ||
         !wipeOne ||
         !wipeTwo
       ) {
@@ -834,6 +846,7 @@ export default function Home() {
         label,
         information,
         typography,
+        scene,
         wipeOne,
         wipeTwo,
       ];
@@ -844,7 +857,7 @@ export default function Home() {
         visibility: "visible",
       });
       gsap.set([wipeOne, wipeTwo], {
-        xPercent: direction === 1 ? -180 : 180,
+        xPercent: direction === 1 ? -170 : 170,
         autoAlpha: 0,
       });
 
@@ -863,28 +876,49 @@ export default function Home() {
 
       transitionTimelineRef.current = timeline;
       timeline
-        .to(title, { yPercent: direction === 1 ? -118 : 118, duration: 0.32, ease: "power3.in" }, 0)
-        .to(label, { yPercent: direction === 1 ? -80 : 80, autoAlpha: 0, duration: 0.24 }, 0)
-        .to(information, { xPercent: direction === 1 ? -18 : 18, autoAlpha: 0, duration: 0.3 }, 0)
-        .to(typography, { x: direction === 1 ? -28 : 28, duration: 0.46 }, 0)
-        .to(outgoingSidePlane, { ...outgoingTarget, duration: 0.64 }, 0.06)
-        .to(currentPlane, { ...currentTarget, duration: 0.82 }, 0.08)
-        .to(incomingPlane, { ...incomingTarget, duration: 0.82 }, 0.08)
-        .to(emergingSidePlane, { ...emergingTarget, duration: 0.68 }, 0.23)
-        .to(wipeOne, { xPercent: direction === 1 ? 2350 : -2350, autoAlpha: 0.82, duration: 0.72 }, 0.12)
-        .to(wipeTwo, { xPercent: direction === 1 ? -2350 : 2350, autoAlpha: 0.68, duration: 0.72 }, 0.17)
+        .to(title, { yPercent: direction === 1 ? -112 : 112, duration: 0.38, ease: "power3.in" }, 0)
+        .to(label, { yPercent: direction === 1 ? -90 : 90, autoAlpha: 0, duration: 0.3, ease: "power3.in" }, 0.03)
+        .to(information, {
+          xPercent: direction === 1 ? -22 : 22,
+          yPercent: 8,
+          clipPath: direction === 1 ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)",
+          autoAlpha: 0,
+          duration: 0.46,
+          ease: "power3.inOut",
+        }, 0.02)
+        .to(typography, { xPercent: direction === 1 ? -4 : 4, duration: 0.64, ease: "power2.inOut" }, 0)
+        .to(scene, { backgroundPositionX: direction === 1 ? "56%" : "44%", duration: 0.9, ease: "power2.inOut" }, 0.1)
+        .to(outgoingSidePlane, { ...outgoingTarget, duration: 0.92, ease: "power3.inOut" }, 0.13)
+        .to(currentPlane, { ...currentTarget, duration: 1.08, ease: "power4.inOut" }, 0.16)
+        .to(incomingPlane, { ...incomingTarget, duration: 1.08, ease: "power4.inOut" }, 0.16)
+        .to(emergingSidePlane, { ...emergingTarget, duration: 0.92, ease: "power3.inOut" }, 0.34)
+        .to(wipeOne, { xPercent: direction === 1 ? 620 : -620, autoAlpha: 0.9, duration: 0.82, ease: "power3.inOut" }, 0.28)
+        .to(wipeTwo, { xPercent: direction === 1 ? 610 : -610, autoAlpha: 0.72, duration: 0.92, ease: "power3.inOut" }, 0.37)
         .add(() => {
           activeCategoryRef.current = normalizedNextIndex;
           flushSync(() => setActiveCategoryIndex(normalizedNextIndex));
           gsap.set(title, { yPercent: direction === 1 ? 118 : -118 });
           gsap.set(label, { yPercent: direction === 1 ? 70 : -70, autoAlpha: 0 });
-          gsap.set(information, { xPercent: direction === 1 ? 18 : -18, autoAlpha: 0 });
-          gsap.set(typography, { x: direction === 1 ? 24 : -24 });
-        }, 0.46)
-        .to(title, { yPercent: 0, duration: 0.42, ease: "power4.out" }, 0.54)
-        .to(label, { yPercent: 0, autoAlpha: 1, duration: 0.34, ease: "power3.out" }, 0.58)
-        .to(information, { xPercent: 0, autoAlpha: 1, duration: 0.38, ease: "power3.out" }, 0.58)
-        .to(typography, { x: 0, duration: 0.42, ease: "power3.out" }, 0.54);
+          gsap.set(information, {
+            xPercent: direction === 1 ? 22 : -22,
+            yPercent: 8,
+            clipPath: direction === 1 ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)",
+            autoAlpha: 0,
+          });
+          gsap.set(typography, { xPercent: direction === 1 ? 3 : -3 });
+        }, 0.76)
+        .to(information, {
+          xPercent: 0,
+          yPercent: 0,
+          clipPath: "inset(0 0% 0 0%)",
+          autoAlpha: 1,
+          duration: 0.52,
+          ease: "power3.out",
+        }, 0.86)
+        .to(title, { yPercent: 0, duration: 0.58, ease: "power4.out" }, 0.92)
+        .to(label, { yPercent: 0, autoAlpha: 1, duration: 0.44, ease: "power3.out" }, 0.98)
+        .to(typography, { xPercent: 0, duration: 0.58, ease: "power3.out" }, 0.9)
+        .to(scene, { backgroundPositionX: "50%", duration: 0.5, ease: "power2.out" }, 0.92);
     },
     [syncPlanePoses],
   );
@@ -1447,6 +1481,16 @@ export default function Home() {
                   aria-hidden={slot !== "active"}
                   key={category.name}
                 >
+                  <Image
+                    className="category-plane-image"
+                    src={category.workspaceImage}
+                    alt=""
+                    fill
+                    priority={categoryIndex < 3}
+                    sizes="(max-width: 600px) 84vw, (max-width: 900px) 76vw, 66vw"
+                    style={{ objectPosition: category.workspaceImagePosition }}
+                  />
+                  <span className="category-plane-shade" aria-hidden="true" />
                   <button
                     type="button"
                     className="category-open-trigger"
