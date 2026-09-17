@@ -88,6 +88,10 @@ const categories = [
     scope: "Cabinetry / Islands / Integrated storage",
     tone: "#8f765d",
     depth: "#30261f",
+    workspaceImage: "/workspaces/kitchen.webp",
+    workspaceImageAlt:
+      "Concept visualization of a walnut kitchen with a monolithic stone island",
+    workspaceImagePosition: "center center",
   },
   {
     name: "WARDROBE",
@@ -96,6 +100,10 @@ const categories = [
     scope: "Dressing rooms / Wardrobes / Interior systems",
     tone: "#77736c",
     depth: "#272725",
+    workspaceImage: "/workspaces/wardrobe.webp",
+    workspaceImageAlt:
+      "Concept visualization of an oak walk-in wardrobe with smoked-glass cabinetry",
+    workspaceImagePosition: "center center",
   },
   {
     name: "ARCHITECTURAL DOORS",
@@ -104,6 +112,10 @@ const categories = [
     scope: "Full-height doors / Concealed frames / Wall integration",
     tone: "#9a846d",
     depth: "#342b24",
+    workspaceImage: "/workspaces/architectural-doors.webp",
+    workspaceImageAlt:
+      "Concept visualization of a full-height oak pivot door with integrated wall paneling",
+    workspaceImagePosition: "center center",
   },
   {
     name: "SKIRTING",
@@ -112,6 +124,10 @@ const categories = [
     scope: "Shadow lines / Flush details / Perimeter finishing",
     tone: "#aaa49a",
     depth: "#35332f",
+    workspaceImage: "/workspaces/skirting.webp",
+    workspaceImageAlt:
+      "Concept visualization of recessed shadow-gap skirting across plaster and oak walls",
+    workspaceImagePosition: "center center",
   },
   {
     name: "TV WALL / CONSOLE",
@@ -120,6 +136,10 @@ const categories = [
     scope: "Media walls / Consoles / Integrated lighting",
     tone: "#755947",
     depth: "#281f1a",
+    workspaceImage: "/workspaces/tv-wall-console.webp",
+    workspaceImageAlt:
+      "Concept visualization of a travertine media wall with a floating walnut console",
+    workspaceImagePosition: "center center",
   },
   {
     name: "BATHROOM VANITY",
@@ -128,6 +148,10 @@ const categories = [
     scope: "Vanities / Tall storage / Mirror integration",
     tone: "#898b86",
     depth: "#2b2d2b",
+    workspaceImage: "/workspaces/bathroom-vanity.webp",
+    workspaceImageAlt:
+      "Concept visualization of a floating walnut bathroom vanity with integrated stone basins",
+    workspaceImagePosition: "center center",
   },
 ] as const;
 
@@ -1698,9 +1722,16 @@ export default function Home() {
             <div
               ref={workspaceMaterialRef}
               className="workspace-material"
-              aria-hidden="true"
             >
-              <span>{activeWorkspace.mark}</span>
+              <Image
+                src={activeWorkspace.workspaceImage}
+                alt={activeWorkspace.workspaceImageAlt}
+                fill
+                priority
+                sizes="(max-width: 760px) 100vw, 66vw"
+                style={{ objectPosition: activeWorkspace.workspaceImagePosition }}
+              />
+              <span aria-hidden="true">{activeWorkspace.mark}</span>
             </div>
 
             <div className="workspace-title-block">

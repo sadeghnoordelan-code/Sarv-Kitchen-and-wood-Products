@@ -838,11 +838,29 @@ button:focus-visible {
     var(--workspace-tone);
 }
 
+.workspace-material::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(135deg, rgb(12 10 8 / 6%), transparent 45%),
+    linear-gradient(0deg, rgb(12 10 8 / 42%), transparent 52%);
+  content: "";
+  pointer-events: none;
+}
+
+.workspace-material img {
+  object-fit: cover;
+  filter: saturate(0.84) contrast(1.03);
+  transform: scale(1.012);
+}
+
 .workspace-material::after {
   position: absolute;
   top: 24%;
   right: 0;
   left: 0;
+  z-index: 2;
   height: 1px;
   background: rgb(246 243 236 / 25%);
   content: "";
@@ -852,6 +870,7 @@ button:focus-visible {
   position: absolute;
   right: -0.05em;
   bottom: -0.18em;
+  z-index: 2;
   color: rgb(246 243 236 / 12%);
   font-family: Georgia, "Times New Roman", serif;
   font-size: min(43vw, 39rem);
