@@ -763,6 +763,19 @@ button:focus-visible {
   color: #777168;
 }
 
+@media (min-width: 901px) {
+  .field-section {
+    min-height: calc(560svh + clamp(20rem, 34vw, 36rem));
+    overflow: visible;
+  }
+
+  .field-shell {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
 .field-section[data-workspace-hidden="true"] {
   visibility: hidden;
   pointer-events: none;

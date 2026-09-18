@@ -359,8 +359,13 @@ export default function Home() {
   const preserveProgressOnResize = useRef(false);
   const activeCategoryRef = useRef(0);
   const isFieldTransitioningRef = useRef(false);
+  const queuedFieldCategoryRef = useRef<number | null>(null);
+  const selectCategoryRef = useRef<
+    (nextIndex: number, requestedDirection?: -1 | 1) => void
+  >(() => undefined);
   const transitionTimelineRef = useRef<gsap.core.Timeline | null>(null);
   const planeRefs = useRef<Array<HTMLElement | null>>([]);
+  const fieldSectionRef = useRef<HTMLElement>(null);
   const fieldSceneRef = useRef<HTMLDivElement>(null);
   const fieldTypographyRef = useRef<HTMLDivElement>(null);
   const fieldTitleRef = useRef<HTMLHeadingElement>(null);
@@ -772,10 +777,12 @@ export default function Home() {
       const currentIndex = activeCategoryRef.current;
       const normalizedNextIndex = wrappedCategoryIndex(nextIndex);
 
-      if (
-        normalizedNextIndex === currentIndex ||
-        isFieldTransitioningRef.current
-      ) {
+      if (normalizedNextIndex === currentIndex) {
+        return;
+      }
+
+      if (isFieldTransitioningRef.current) {
+        queuedFieldCategoryRef.current = normalizedNextIndex;
         return;
       }
 
@@ -871,6 +878,30 @@ export default function Home() {
           transitionTimelineRef.current = null;
           isFieldTransitioningRef.current = false;
           setIsFieldTransitioning(false);
+
+          const queuedCategory = queuedFieldCategoryRef.current;
+          queuedFieldCategoryRef.current = null;
+          if (
+            queuedCategory !== null &&
+            queuedCategory !== activeCategoryRef.current
+          ) {
+            const queuedDirection =
+              queuedCategory > activeCategoryRef.current ? 1 : -1;
+            const nextQueuedCategory = wrappedCategoryIndex(
+              activeCategoryRef.current + queuedDirection,
+            );
+
+            if (nextQueuedCategory !== queuedCategory) {
+              queuedFieldCategoryRef.current = queuedCategory;
+            }
+
+            window.requestAnimationFrame(() => {
+              selectCategoryRef.current(
+                nextQueuedCategory,
+                queuedDirection,
+              );
+            });
+          }
         },
       });
 
@@ -922,6 +953,67 @@ export default function Home() {
     },
     [syncPlanePoses],
   );
+
+  useEffect(() => {
+    selectCategoryRef.current = selectCategory;
+  }, [selectCategory]);
+
+  useEffect(() => {
+    const section = fieldSectionRef.current;
+    const shell = section?.querySelector<HTMLElement>(".field-shell");
+    const intro = section?.querySelector<HTMLElement>(".field-intro");
+    if (!section || !shell || !intro) return;
+
+    let frame = 0;
+    let scrollStart = 0;
+    let scrollEnd = 1;
+
+    const measureScrollRange = () => {
+      scrollStart = section.offsetTop + intro.offsetTop + intro.offsetHeight;
+      scrollEnd = section.offsetTop + section.offsetHeight - window.innerHeight;
+    };
+
+    const syncCategoryToScroll = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        if (
+          window.innerWidth <= 900 ||
+          activeWorkspaceIndexRef.current !== null ||
+          activeSelectedProjectIndex !== null
+        ) {
+          return;
+        }
+
+        const progress = clamp01(
+          (window.scrollY - scrollStart) / Math.max(1, scrollEnd - scrollStart),
+        );
+        const nextIndex = Math.round(progress * (categories.length - 1));
+
+        if (nextIndex !== activeCategoryRef.current) {
+          selectCategoryRef.current(
+            nextIndex,
+            nextIndex > activeCategoryRef.current ? 1 : -1,
+          );
+        }
+      });
+    };
+
+    const handleScrollResize = () => {
+      measureScrollRange();
+      syncCategoryToScroll();
+    };
+
+    measureScrollRange();
+    syncCategoryToScroll();
+    window.addEventListener("scroll", syncCategoryToScroll, { passive: true });
+    window.addEventListener("resize", handleScrollResize, { passive: true });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", syncCategoryToScroll);
+      window.removeEventListener("resize", handleScrollResize);
+    };
+  }, [activeSelectedProjectIndex]);
 
   const selectRelativeCategory = (direction: -1 | 1) => {
     selectCategory(activeCategoryRef.current + direction, direction);
@@ -1430,6 +1522,7 @@ export default function Home() {
       </section>
 
       <section
+        ref={fieldSectionRef}
         className="field-section"
         aria-labelledby="field-title"
         aria-hidden={activeWorkspace !== null || activeSelectedProject !== null}
