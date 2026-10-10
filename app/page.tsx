@@ -394,6 +394,24 @@ export default function Home() {
   const workspaceResultsTimelineRef = useRef<gsap.core.Timeline | null>(null);
   const isWorkspaceAnimatingRef = useRef(false);
   const [isReady, setIsReady] = useState(false);
+  const [heroNeedsStart, setHeroNeedsStart] = useState(false);
+  const [heroFailed, setHeroFailed] = useState(false);
+
+  const prepareHeroVideo = useCallback((reload = false) => {
+    const video = videoRef.current;
+    if (!video) return;
+    setHeroFailed(false);
+    setHeroNeedsStart(false);
+    video.muted = true;
+    video.defaultMuted = true;
+    if (reload || video.error) video.load();
+    void video.play().then(() => {
+      video.pause();
+      if (video.readyState >= 2) setIsReady(true);
+    }).catch(() => {
+      if (video.readyState < 2) setHeroNeedsStart(true);
+    });
+  }, []);
   const [visibleProgress, setVisibleProgress] = useState(0);
   const [activeCategoryIndex, setActiveCategoryIndex] = useState(0);
   const [isFieldTransitioning, setIsFieldTransitioning] = useState(false);
@@ -453,7 +471,11 @@ export default function Home() {
     measure();
     readUnifiedScrollProgress();
     currentProgress.current = targetProgress.current;
-    setIsReady(Number.isFinite(video.duration) && video.duration > 0);
+    setIsReady(video.readyState >= 2);
+    prepareHeroVideo();
+    const loadingTimeout = window.setTimeout(() => {
+      if (video.readyState < 2) setHeroNeedsStart(true);
+    }, 8000);
 
     window.addEventListener("scroll", readUnifiedScrollProgress, {
       passive: true,
@@ -478,7 +500,7 @@ export default function Home() {
           ? targetProgress.current
           : currentProgress.current + difference * ease;
 
-      if (Number.isFinite(video.duration) && video.duration > 0) {
+      if (video.readyState >= 2 && Number.isFinite(video.duration) && video.duration > 0) {
         const safeDuration = Math.max(0, video.duration - 0.04);
         const requestedTime = currentProgress.current * safeDuration;
 
@@ -505,8 +527,10 @@ export default function Home() {
       window.removeEventListener("resize", handleResize);
       window.cancelAnimationFrame(animationFrame);
       window.cancelAnimationFrame(resizeFrame);
+      window.clearTimeout(loadingTimeout);
+      video.pause();
     };
-  }, []);
+  }, [prepareHeroVideo]);
 
   const syncPlanePoses = useCallback(() => {
     planeRefs.current.forEach((plane) => {
@@ -1466,15 +1490,25 @@ export default function Home() {
             muted
             playsInline
             aria-hidden="true"
-            onLoadedMetadata={(event) => {
-              event.currentTarget.pause();
-              event.currentTarget.currentTime = 0.001;
+            poster="/media/sarv-hero-poster.webp"
+            onLoadedData={() => {
               setIsReady(true);
+              setHeroNeedsStart(false);
+              setHeroFailed(false);
             }}
-            onLoadedData={() => setIsReady(true)}
-            onCanPlay={() => setIsReady(true)}
-            onSeeked={() => setIsReady(true)}
+            onPlaying={(event) => event.currentTarget.pause()}
+            onError={() => {
+              setIsReady(false);
+              setHeroFailed(true);
+              setHeroNeedsStart(true);
+            }}
           />
+
+          {heroNeedsStart && (
+            <button className="hero-start" type="button" onClick={() => prepareHeroVideo(true)}>
+              {heroFailed ? "Retry film" : "Start film"}
+            </button>
+          )}
 
           <div className="hero-shade" aria-hidden="true" />
 
@@ -1512,7 +1546,7 @@ export default function Home() {
             <output aria-live="off">{String(visibleProgress).padStart(2, "0")}</output>
           </div>
 
-          {!isReady && (
+          {!isReady && !heroNeedsStart && (
             <div className="hero-loading" role="status">
               <span />
               Preparing film
